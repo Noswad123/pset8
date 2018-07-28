@@ -29,23 +29,42 @@ def index():
 
 @app.route("/articles")
 def articles():
-    """Look up articles for geo"""
 
-    # TODO
-    return jsonify([])
+   # rename geo
+    geo = request.args.get("geo")
+
+    if not geo:
+        raise RuntimeError("Geo not set")
+
+
+    foundArticles = lookup(geo)
+
+
+    if len(articles) > 5:
+        return jsonify([foundArticles[0], foundArticles[1], foundArticles[2], foundArticles[4], foundArticles[5]])
+    else:
+        return jsonify(foundArticles)
 
 
 @app.route("/search")
 def search():
-    """Search for places that match query"""
+    """Search for locations that match query"""
 
-    # TODO
-    return jsonify([])
+    searchQuery = request.args.get("q") + "%"
 
+    location = db.execute("SELECT * FROM locations WHERE postal_code \
+                                LIKE :q OR location_name LIKE :q OR admin_name1 LIKE :q", q=searchQuery)
+
+
+    if len(location) > 10:
+        return jsonify([location[0], location[1], location[2],  location[3],  location[4],
+                        location[5], location[6],  location[7],  location[8],  location[9]])
+    else:
+        return jsonify(location)
 
 @app.route("/update")
 def update():
-    """Find up to 10 places within view"""
+    """Find up to 10 locations within view"""
 
     # Ensure parameters are present
     if not request.args.get("sw"):
@@ -69,7 +88,7 @@ def update():
     if sw_lng <= ne_lng:
 
         # Doesn't cross the antimeridian
-        rows = db.execute("""SELECT * FROM places
+        rows = db.execute("""SELECT * FROM locations
                           WHERE :sw_lat <= latitude AND latitude <= :ne_lat AND (:sw_lng <= longitude AND longitude <= :ne_lng)
                           GROUP BY country_code, place_name, admin_code1
                           ORDER BY RANDOM()
@@ -79,12 +98,12 @@ def update():
     else:
 
         # Crosses the antimeridian
-        rows = db.execute("""SELECT * FROM places
+        rows = db.execute("""SELECT * FROM locations
                           WHERE :sw_lat <= latitude AND latitude <= :ne_lat AND (:sw_lng <= longitude OR longitude <= :ne_lng)
                           GROUP BY country_code, place_name, admin_code1
                           ORDER BY RANDOM()
                           LIMIT 10""",
                           sw_lat=sw_lat, ne_lat=ne_lat, sw_lng=sw_lng, ne_lng=ne_lng)
 
-    # Output places as JSON
+    # Output locations as JSON
     return jsonify(rows)
